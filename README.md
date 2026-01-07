@@ -257,7 +257,7 @@ const CONFIG = {
 2. Increase timeout in config
 3. Try running with `HEADLESS=false` to see what's happening
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -267,15 +267,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This tool is for educational and personal use only. Please ensure you comply with GoBiz's Terms of Service when using this scraper. The authors are not responsible for any misuse or violations.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Puppeteer](https://pptr.dev/) - Headless browser automation
 - [Cloudflare D1](https://developers.cloudflare.com/d1/) - Serverless SQL database
@@ -289,7 +289,7 @@ If you encounter any issues or have questions:
 2. Search [existing issues](https://github.com/wimboro/gobiz-grab/issues)
 3. Create a [new issue](https://github.com/wimboro/gobiz-grab/issues/new)
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] Add support for date range selection
 - [ ] Implement export to CSV/Excel
