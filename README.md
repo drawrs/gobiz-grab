@@ -281,7 +281,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Cloudflare D1](https://developers.cloudflare.com/d1/) - Serverless SQL database
 - [Axios](https://axios-http.com/) - HTTP client
 
-## 📞 Support
+## Support
 
 If you encounter any issues or have questions:
 
