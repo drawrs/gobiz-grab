@@ -2,6 +2,8 @@ require('dotenv').config();
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
+const cors = require('cors');
 const D1Client = require('./d1Client');
 
 // Configuration
@@ -19,7 +21,10 @@ const CONFIG = {
     d1Enabled: process.env.D1_ENABLED === 'true',
     d1AccountId: process.env.D1_ACCOUNT_ID,
     d1DatabaseId: process.env.D1_DATABASE_ID,
-    d1ApiToken: process.env.D1_API_TOKEN
+    d1DatabaseId: process.env.D1_DATABASE_ID,
+    d1ApiToken: process.env.D1_API_TOKEN,
+    // Dashboard
+    port: process.env.PORT || 3000
 };
 
 // Initialize D1 Client if enabled
@@ -247,7 +252,7 @@ async function extractTransactions(page, apiResponses) {
     // Wait for table and API responses
     console.log('💰 Waiting for transaction data...');
     await new Promise(resolve => setTimeout(resolve, 5000));
-    
+
     const domTransactions = await page.evaluate(() => {
         const data = [];
         const table = document.querySelector('table');
@@ -269,7 +274,7 @@ async function extractTransactions(page, apiResponses) {
 
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
-            
+
             data.push({
                 tanggalWaktu: columnMap.dateTime >= 0 ? cells[columnMap.dateTime]?.innerText.trim() : '',
                 idPesanan: columnMap.orderId >= 0 ? cells[columnMap.orderId]?.innerText.trim() : '',
@@ -292,7 +297,7 @@ async function extractTransactions(page, apiResponses) {
 
         for (const apiResp of apiResponses) {
             const apiData = apiResp.data;
-            
+
             // Check if this API response contains transaction data
             if (apiData.hits && Array.isArray(apiData.hits)) {
                 // This looks like the journals/search endpoint
@@ -304,9 +309,9 @@ async function extractTransactions(page, apiResponses) {
                 if (match) {
                     amount = match.amount;
                     // Get transaction_time from multiple possible locations
-                    transactionTime = match.metadata?.transaction?.transaction_time || 
-                                    match.time || 
-                                    match.created_at;
+                    transactionTime = match.metadata?.transaction?.transaction_time ||
+                        match.time ||
+                        match.created_at;
                     amountSource = 'api_journals';
                     break;
                 }
@@ -315,13 +320,13 @@ async function extractTransactions(page, apiResponses) {
 
         // Amount is in cents (smallest unit), divide by 100 for actual Rupiah
         const amountInRupiah = amount ? amount / 100 : 0;
-        
+
         // Format transaction time to readable format
         let formattedTime = domTx.tanggalWaktu; // Keep original if API time not found
         if (transactionTime) {
             try {
                 const date = new Date(transactionTime);
-                formattedTime = date.toLocaleString('id-ID', { 
+                formattedTime = date.toLocaleString('id-ID', {
                     timeZone: 'Asia/Jakarta',
                     year: 'numeric',
                     month: '2-digit',
@@ -334,7 +339,7 @@ async function extractTransactions(page, apiResponses) {
                 // Keep original if parsing fails
             }
         }
-        
+
         return {
             ...domTx,
             tanggalWaktu: formattedTime,
@@ -354,20 +359,20 @@ async function extractTransactions(page, apiResponses) {
  */
 function cleanSessionData() {
     console.log('🧹 Cleaning session and user data...');
-    
+
     try {
         // Remove session file
         if (fs.existsSync(CONFIG.sessionFile)) {
             fs.unlinkSync(CONFIG.sessionFile);
             console.log('✅ Session file removed');
         }
-        
+
         // Remove user data directory
         if (fs.existsSync(CONFIG.userDataDir)) {
             fs.rmSync(CONFIG.userDataDir, { recursive: true, force: true });
             console.log('✅ User data directory removed');
         }
-        
+
         console.log('✅ Session cleanup complete\n');
     } catch (error) {
         console.warn('⚠️  Failed to clean session data:', error.message);
@@ -430,7 +435,7 @@ async function monitorTransactions() {
             if (status === 200 && response.headers()['content-type']?.includes('application/json')) {
                 try {
                     const data = await response.json();
-                    
+
                     // Store responses that contain transaction data
                     if (url.includes('journal')) {
                         // Clear old responses and keep only latest
@@ -479,15 +484,15 @@ async function monitorTransactions() {
                         const rows = table.querySelectorAll('tbody tr');
                         return rows.length > 0;
                     }
-                    
+
                     // Check for "no transactions" message
                     const noTransactionText = document.body.innerText.toLowerCase();
-                    if (noTransactionText.includes('belum ada transaksi') || 
+                    if (noTransactionText.includes('belum ada transaksi') ||
                         noTransactionText.includes('no transaction') ||
                         noTransactionText.includes('tidak ada transaksi')) {
                         return false;
                     }
-                    
+
                     return false;
                 });
 
@@ -504,7 +509,7 @@ async function monitorTransactions() {
                 const transactions = await extractTransactions(page, apiResponses);
 
                 console.log(`✅ Found ${transactions.length} transactions`);
-                
+
                 // Show API capture status
                 const transactionsWithAmount = transactions.filter(t => t.jumlah > 0).length;
                 if (transactionsWithAmount > 0) {
@@ -543,14 +548,14 @@ async function monitorTransactions() {
                     try {
                         console.log('\n💾 Saving to Cloudflare D1 database...');
                         const result = await d1Client.upsertTransactions(transactions);
-                        
+
                         if (result.successCount > 0) {
                             console.log(`✅ D1: Saved ${result.successCount} transactions`);
-                            
+
                             // Update daily summary
                             const today = new Date().toISOString().split('T')[0];
                             const totalAmountCents = transactions.reduce((sum, t) => sum + (t.jumlahCents || 0), 0);
-                            
+
                             await d1Client.updateDailySummary(
                                 today,
                                 transactions.length,
@@ -559,7 +564,7 @@ async function monitorTransactions() {
                             );
                             console.log(`✅ D1: Daily summary updated`);
                         }
-                        
+
                         if (result.errorCount > 0) {
                             console.log(`⚠️  D1: ${result.errorCount} transactions failed to save`);
                         }
@@ -645,8 +650,54 @@ async function monitorTransactions() {
     }
 }
 
+/**
+ * Start Express Server for Dashboard
+ */
+function startDashboardServer() {
+    const app = express();
+    app.use(cors());
+    app.use(express.json());
+
+    // API Endpoint for latest transactions
+    app.get('/api/transactions', (req, res) => {
+        try {
+            const latestFile = path.join(__dirname, 'transactions_latest.json');
+            if (fs.existsSync(latestFile)) {
+                const data = JSON.parse(fs.readFileSync(latestFile, 'utf8'));
+                res.json(data);
+            } else {
+                res.json({
+                    scrapedAt: new Date().toISOString(),
+                    totalCount: 0,
+                    totalAmount: 0,
+                    transactions: [],
+                    message: "No data available yet"
+                });
+            }
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Serve static files from dashboard build directory
+    const dashboardDist = path.join(__dirname, 'dashboard', 'dist');
+    if (fs.existsSync(dashboardDist)) {
+        app.use(express.static(dashboardDist));
+        app.get(/.*/, (req, res) => {
+            res.sendFile(path.join(dashboardDist, 'index.html'));
+        });
+    }
+
+    app.listen(CONFIG.port, () => {
+        console.log(`\n🌐 Dashboard server running at http://localhost:${CONFIG.port}`);
+    });
+}
+
 // Run the monitor
 if (require.main === module) {
+    // Start dashboard server
+    startDashboardServer();
+    // Start monitor
     monitorTransactions();
 }
 
