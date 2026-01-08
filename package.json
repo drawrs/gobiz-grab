@@ -12,7 +12,9 @@
   },
   "homepage": "https://github.com/wimboro/gobiz-grab#readme",
   "scripts": {
-    "start": "node scrapeTransactionsMonitor.js",
+    "start": "concurrently -n scraper,dashboard -c green,blue \"node scrapeTransactionsMonitor.js\" \"npm run dev --prefix dashboard\"",
+    "dev": "concurrently -n scraper,dashboard -c green,blue \"node scrapeTransactionsMonitor.js\" \"npm run dev --prefix dashboard\"",
+    "scraper": "node scrapeTransactionsMonitor.js",
     "api": "node scrapeTransactionsAPI.js",
     "hybrid": "node scrapeTransactionsHybrid.js",
     "direct-api": "node scrapeTransactionsDirectAPI.js",
@@ -50,5 +52,8 @@
     "express": "^5.2.1",
     "node-fetch": "^2.7.0",
     "puppeteer": "^24.15.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Activity, DollarSign, ShoppingCart, RefreshCw } from 'lucide-react';
+import { Activity, DollarSign, ShoppingCart, RefreshCw, QrCode } from 'lucide-react';
 import { StatsCard } from './components/StatsCard';
 import { TransactionsTable } from './components/TransactionsTable';
+import { QRISModal } from './components/QRISModal';
 
 function App() {
   const [data, setData] = useState({ transactions: [], totalAmount: 0, totalCount: 0, scrapedAt: null });
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [qrisModalOpen, setQrisModalOpen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -51,9 +53,18 @@ function App() {
               Live Monitoring
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Last updated</p>
-            <p className="text-sm font-mono text-gray-300">{lastUpdated.toLocaleTimeString()}</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setQrisModalOpen(true)}
+              className="flex items-center gap-2 bg-primary-500 hover:bg-primary-500/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              <QrCode className="w-4 h-4" />
+              Generate QRIS
+            </button>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Last updated</p>
+              <p className="text-sm font-mono text-gray-300">{lastUpdated.toLocaleTimeString()}</p>
+            </div>
           </div>
         </div>
 
@@ -79,6 +90,9 @@ function App() {
 
         {/* Transactions Table */}
         <TransactionsTable transactions={data.transactions || []} />
+
+        {/* QRIS Modal */}
+        <QRISModal isOpen={qrisModalOpen} onClose={() => setQrisModalOpen(false)} />
 
       </div>
     </div>
